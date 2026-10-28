@@ -1,0 +1,175 @@
+:root {
+  --bg: #0b0c10;
+  --fg: #f2f3f5;
+  --muted: #9aa0ab;
+  --accent: #8ab4ff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body {
+  background: radial-gradient(ellipse at 50% 30%, #1b1e27 0%, var(--bg) 70%) fixed;
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#webgl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+#scroll {
+  position: relative;
+  z-index: 1;
+}
+
+.panel {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 0 8vw;
+}
+
+.panel.right { justify-content: flex-end; }
+.panel.center { justify-content: center; align-items: flex-end; padding-bottom: 10vh; text-align: center; }
+.panel.hero { align-items: flex-start; padding-top: 14vh; }
+
+/* Efecto "iPhone glass": fondo translúcido que desenfoca el canvas 3D de detrás */
+.copy {
+  position: relative;
+  max-width: 38rem;
+  padding: 1.75rem 2rem;
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+/* Reflejo especular en el borde superior izquierdo */
+.copy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 40%, transparent 70%, rgba(255, 255, 255, 0.2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Sin soporte de backdrop-filter: fondo más opaco para mantener la legibilidad */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .copy { background: rgba(20, 22, 30, 0.85); }
+}
+
+.eyebrow {
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+}
+
+p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+code {
+  color: var(--fg);
+  background: #ffffff14;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+
+.swatches {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--c);
+  cursor: pointer;
+  outline-offset: 3px;
+  transition: transform 0.2s;
+}
+
+.swatch:hover { transform: scale(1.1); }
+.swatch.active { border-color: var(--fg); }
+
+/* Última sección: arrastrar para girar el portátil.
+   pan-y deja el scroll vertical al navegador y nos pasa los arrastres horizontales (táctil) */
+#playground { touch-action: pan-y; }
+#playground.is-active { cursor: grab; }
+#playground.dragging { cursor: grabbing; user-select: none; }
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  font-size: 0.75rem;
+  padding: 0.35em 0.85em;
+  border-radius: 999px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  transition: opacity 0.4s;
+}
+
+#playground.touched .hint { opacity: 0; }
+
+@media (max-width: 700px) {
+  .panel,
+  .panel.right { justify-content: center; align-items: flex-end; padding: 0 16px 12vh; text-align: center; }
+  .panel.hero { align-items: flex-start; }
+  .copy { padding: 1.25rem 1.25rem; border-radius: 22px; }
+  .swatches { justify-content: center; }
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>web3d-lab</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- El canvas 3D queda fijo detrás de todo el contenido -->
+    <canvas id="webgl"></canvas>
+
+    <!-- Cada .panel mide 100vh: el scroll a través de ellos controla la animación -->
+    <main id="scroll">
+      <section class="panel hero">
+        <div class="copy">
+          <p class="eyebrow">web3d-lab · v0.1</p>
+          <h1>Un producto en 3D,<br />en tu navegador.</h1>
+          <p>Hecho con Three.js y GSAP. Haz scroll ↓</p>
+        </div>
+      </section>
+
+      <section class="panel right">
+        <div class="copy">
+          <p class="eyebrow">01 · Animación con scroll</p>
+          <h2>Se abre mientras bajas.</h2>
+          <p>La tapa gira sobre su bisagra. El progreso del scroll mueve una línea de tiempo de GSAP.</p>
+        </div>
+      </section>
+
+      <section class="panel left">
+        <div class="copy">
+          <p class="eyebrow">02 · Cámara</p>
+          <h2>La cámara viaja.</h2>
+          <p>No movemos el modelo: movemos la cámara y el punto al que mira.</p>
+        </div>
+      </section>
+
+      <section class="panel right">
+        <div class="copy">
+          <p class="eyebrow">03 · Materiales PBR</p>
+          <h2>Elige tu color.</h2>
+          <p>El metal refleja un entorno HDR. Si cambias el color, cambia el material.</p>
+          <div class="swatches">
+            <button class="swatch active" data-color="#c8cad0" style="--c: #c8cad0" aria-label="Plata"></button>
+            <button class="swatch" data-color="#3b3e46" style="--c: #3b3e46" aria-label="Grafito"></button>
+            <button class="swatch" data-color="#d8c3a5" style="--c: #d8c3a5" aria-label="Arena"></button>
+            <button class="swatch" data-color="#6f8fb8" style="--c: #6f8fb8" aria-label="Azul"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Última sección: aquí se puede arrastrar el portátil para girarlo (ver main.js) -->
+      <section class="panel center" id="playground">
+        <div class="copy">
+          <p class="eyebrow">04 · Muévelo tú</p>
+          <h2>Todo esto es código.</h2>
+          <p>Ningún modelo 3D descargado: el portátil, el teclado y su luz están construidos con Three.js. Arrástralo y míralo de cerca.</p>
+          <ul class="tags">
+            <li>Three.js</li>
+            <li>WebGL</li>
+            <li>GSAP ScrollTrigger</li>
+            <li>Materiales PBR</li>
+            <li>Vite</li>
+          </ul>
+          <p class="hint">↔ Arrastra para girar</p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
