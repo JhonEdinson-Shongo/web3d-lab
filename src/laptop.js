@@ -117,7 +117,8 @@ export function createLaptop() {
     transparent: true,
     visible: false, // se muestra cuando la textura termina de cargar
   });
-  loadSvgTexture('/textures/logo.svg', 2048).then((texture) => {
+  // BASE_URL antepone el prefijo del sitio ('/' en local, '/web3d-lab/' en GitHub Pages)
+  loadSvgTexture(`${import.meta.env.BASE_URL}textures/logo.svg`, 2048).then((texture) => {
     logoMat.map = texture;
     logoMat.visible = true;
     logoMat.needsUpdate = true;
