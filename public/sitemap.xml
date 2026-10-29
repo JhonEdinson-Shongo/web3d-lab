@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Envíalo en Google Search Console: https://jhonedinson-shongo.github.io/web3d-lab/sitemap.xml -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://jhonedinson-shongo.github.io/web3d-lab/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <image:image>
+      <image:loc>https://jhonedinson-shongo.github.io/web3d-lab/og-image.png</image:loc>
+    </image:image>
+  </url>
+</urlset>
