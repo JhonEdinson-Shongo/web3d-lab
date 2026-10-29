@@ -3,11 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- color de la barra del navegador en móvil y del rebote del scroll en Safari -->
+    <meta name="theme-color" content="#0b0c10" />
     <title>web3d-lab</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <!-- Aurora: manchas de color desenfocadas detrás del canvas; su color cambia por sección (main.js) -->
+    <div id="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
     <!-- El canvas 3D queda fijo detrás de todo el contenido -->
     <canvas id="webgl"></canvas>
 
@@ -57,6 +62,10 @@
           <p class="eyebrow">04 · Muévelo tú</p>
           <h2>Todo esto es código.</h2>
           <p>Ningún modelo 3D descargado: el portátil, el teclado y su luz están construidos con Three.js. Arrástralo y míralo de cerca.</p>
+          <div class="ambients" role="group" aria-label="Ambiente del fondo">
+            <span class="ambients-label">Ambiente</span>
+            <!-- los botones se crean en main.js, uno por paleta de palettes.js -->
+          </div>
           <ul class="tags">
             <li>Three.js</li>
             <li>WebGL</li>

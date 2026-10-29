@@ -3,6 +3,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { createLaptop, OPEN_ANGLE } from './laptop.js';
+import { createAurora, createParticles } from './background.js';
+import { THEMES } from './palettes.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -27,7 +29,7 @@ const camTarget = new THREE.Vector3(0, 0.7, 0);
 let portrait = false; // en pantallas verticales alejamos la cámara y centramos el modelo
 const lookTarget = new THREE.Vector3();
 
-// ---------- 2. Luces y sombra ----------
+// ---------- 2. Luces, sombra y partículas ----------
 const keyLight = new THREE.DirectionalLight(0xffffff, 2);
 keyLight.position.set(2, 8, 3);
 keyLight.castShadow = true;
@@ -44,6 +46,10 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMa
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
+
+// Polvo de luz alrededor del portátil (menos partículas en móvil)
+const particles = createParticles(window.matchMedia('(max-width: 700px)').matches ? 180 : 450);
+scene.add(particles.points);
 
 // ---------- 3. Modelo ----------
 const laptop = createLaptop();
@@ -106,24 +112,72 @@ gsap.utils.toArray('.panel:not(.hero)').forEach((panel) => {
   });
 });
 
-// ---------- 5. Selector de color ----------
+// ---------- 5. Aurora: colores por sección ----------
+// Las paletas están en palettes.js; la primera es la que se ve al entrar
+const aurora = createAurora(document.querySelector('#aurora'));
+let theme = THEMES[0];
+let currentSection = 0;
+let chosenColor = document.querySelector('.swatch.active').dataset.color;
+// la sección 03 (null) sigue al color de aluminio elegido
+const auroraFor = (i) => theme.sections[i] ?? [chosenColor, theme.material, chosenColor];
+
+gsap.utils.toArray('.panel').forEach((panel, i) => {
+  ScrollTrigger.create({
+    trigger: panel,
+    start: 'top center',
+    end: 'bottom center',
+    onToggle: (self) => {
+      if (!self.isActive) return;
+      currentSection = i;
+      aurora.setPalette(auroraFor(i));
+    },
+  });
+});
+
+// "Ambiente" (última sección): círculos con las paletas que puede elegir el visitante
+const ambientButtons = THEMES.map(({ name, sections }, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'ambient';
+  btn.title = name;
+  btn.setAttribute('aria-label', `Ambiente ${name}`);
+  sections[0].forEach((c, k) => btn.style.setProperty(`--c${k + 1}`, c));
+  btn.addEventListener('click', () => applyTheme(i));
+  document.querySelector('.ambients').append(btn);
+  return btn;
+});
+
+function applyTheme(i) {
+  theme = THEMES[i];
+  aurora.setPalette(auroraFor(currentSection));
+  aurora.setIntensity(theme.intensity);
+  particles.setAccent(theme.accent);
+  ambientButtons.forEach((btn, k) => {
+    btn.classList.toggle('active', k === i);
+    btn.setAttribute('aria-pressed', String(k === i));
+  });
+}
+applyTheme(0);
+
+// ---------- 6. Selector de color ----------
 document.querySelectorAll('.swatch').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelector('.swatch.active')?.classList.remove('active');
     btn.classList.add('active');
     const c = new THREE.Color(btn.dataset.color);
     gsap.to(laptop.aluminium.color, { r: c.r, g: c.g, b: c.b, duration: 0.8, ease: 'power2.out' });
+    chosenColor = btn.dataset.color;
+    if (theme.sections[currentSection] === null) aurora.setPalette(auroraFor(currentSection));
   });
 });
 
-// ---------- 6. Ratón (parallax sutil) ----------
+// ---------- 7. Ratón (parallax sutil) ----------
 const pointer = { x: 0, y: 0 };
 window.addEventListener('pointermove', (e) => {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
 });
 
-// ---------- 7. Arrastrar para girar (última sección) ----------
+// ---------- 8. Arrastrar para girar (última sección) ----------
 const playground = document.querySelector('#playground');
 const drag = { enabled: false, active: false, lastX: 0, velocity: 0 };
 const TURN = Math.PI * 2;
@@ -162,7 +216,7 @@ const endDrag = () => {
 playground.addEventListener('pointerup', endDrag);
 playground.addEventListener('pointercancel', endDrag);
 
-// ---------- 8. Resize ----------
+// ---------- 9. Resize ----------
 function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -174,13 +228,15 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// ---------- 9. Loop de render ----------
+// ---------- 10. Loop de render ----------
 const timer = new THREE.Timer();
 timer.connect(document); // pausa el tiempo cuando la pestaña no está visible
+let scrollBoost = 1; // multiplicador de velocidad de las partículas según la velocidad del scroll
 
 renderer.setAnimationLoop((timestamp) => {
   timer.update(timestamp);
   const t = timer.getElapsed();
+  const dt = timer.getDelta();
 
   // flotación + parallax con interpolación suave (lerp)
   parallax.position.y = 0.45 + Math.sin(t * 1.2) * 0.04;
@@ -196,6 +252,12 @@ renderer.setAnimationLoop((timestamp) => {
     spin.rotation.y += (home - spin.rotation.y) * 0.08;
     drag.velocity = 0;
   }
+
+  // partículas: aceleran con el scroll rápido y se desplazan algo más que el portátil con el ratón (profundidad)
+  const targetBoost = 1 + Math.min(Math.abs(tl.scrollTrigger.getVelocity()) / 300, 8);
+  scrollBoost += (targetBoost - scrollBoost) * 0.08;
+  particles.update(dt, t, scrollBoost);
+  particles.points.position.x += (pointer.x * 0.4 - particles.points.position.x) * 0.03;
 
   model.position.x = portrait ? 0 : stage.x;
   camera.position.copy(camPos).multiplyScalar(portrait ? 1.8 : 1);

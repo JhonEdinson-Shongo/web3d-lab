@@ -3,6 +3,7 @@
   --fg: #f2f3f5;
   --muted: #9aa0ab;
   --accent: #8ab4ff;
+  color-scheme: dark;
 }
 
 * {
@@ -12,10 +13,41 @@
 
 html,
 body {
-  background: radial-gradient(ellipse at 50% 30%, #1b1e27 0%, var(--bg) 70%) fixed;
+  background: radial-gradient(ellipse at 50% 30%, #1b1e27 0%, var(--bg) 70%) fixed var(--bg);
   color: var(--fg);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+#aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#aurora span {
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: var(--aurora-opacity, 0.35);
+  transition: background-color 1.6s ease, opacity 1.6s ease;
+  will-change: transform;
+}
+
+#aurora span:nth-child(1) { top: -18vmax; left: -12vmax; animation: drift-a 26s ease-in-out infinite alternate; }
+#aurora span:nth-child(2) { bottom: -22vmax; right: -14vmax; animation: drift-b 32s ease-in-out infinite alternate; }
+#aurora span:nth-child(3) { top: 25%; left: 35%; width: 38vmax; height: 38vmax; opacity: calc(var(--aurora-opacity, 0.35) * 0.63); animation: drift-c 22s ease-in-out infinite alternate; }
+
+@keyframes drift-a { to { transform: translate(18vw, 12vh) scale(1.15); } }
+@keyframes drift-b { to { transform: translate(-16vw, -10vh) scale(0.9); } }
+@keyframes drift-c { to { transform: translate(-20vw, 8vh) scale(1.25); } }
+
+@media (prefers-reduced-motion: reduce) {
+  #aurora span { animation: none; }
 }
 
 #webgl {
@@ -166,10 +198,50 @@ code {
 
 #playground.touched .hint { opacity: 0; }
 
+.ambients {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.ambients-label {
+  margin-right: 0.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ambient {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.4), transparent 45%),
+    radial-gradient(circle at 20% 80%, var(--c1), transparent 65%),
+    radial-gradient(circle at 85% 35%, var(--c3), transparent 60%),
+    var(--c2);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 3px 10px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  outline-offset: 3px;
+  transition: transform 0.2s;
+}
+
+.ambient:hover { transform: scale(1.1); }
+.ambient.active { outline: 2px solid var(--fg); }
+.ambient:focus-visible { outline: 2px solid var(--accent); }
+
 @media (max-width: 700px) {
   .panel,
   .panel.right { justify-content: center; align-items: flex-end; padding: 0 16px 12vh; text-align: center; }
   .panel.hero { align-items: flex-start; }
   .copy { padding: 1.25rem 1.25rem; border-radius: 22px; }
   .swatches { justify-content: center; }
+  #aurora span { filter: blur(60px); }
 }
