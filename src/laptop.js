@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { createCanvas } from './canvas.js';
 
 // Portátil construido 100% con código (sin archivo .glb).
 // Más adelante lo reemplazaremos por un modelo hecho en Blender (ver README).
@@ -118,7 +119,7 @@ export function createLaptop() {
     visible: false, // se muestra cuando la textura termina de cargar
   });
   // BASE_URL antepone el prefijo del sitio ('/' en local, '/web3d-lab/' en GitHub Pages)
-  loadSvgTexture(`${import.meta.env.BASE_URL}textures/logo.svg`, 2048).then((texture) => {
+  loadTexture(`${import.meta.env.BASE_URL}textures/logo.png`).then((texture) => {
     logoMat.map = texture;
     logoMat.visible = true;
     logoMat.needsUpdate = true;
@@ -187,9 +188,7 @@ function createBacklightTextures({ COLS, ROWS, STEP, KEY }) {
   rects.push({ label: '', cx: 6.5 * STEP * PPU, cy: (ROWS - 0.5) * STEP * PPU, w: (STEP * 4 + KEY) * PPU });
 
   const makeCanvas = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = createCanvas(width, height);
     return [canvas, canvas.getContext('2d')];
   };
   const toTexture = (canvas) => {
@@ -224,32 +223,24 @@ function createBacklightTextures({ COLS, ROWS, STEP, KEY }) {
   return { glow: toTexture(glowCanvas), legends: toTexture(legendCanvas) };
 }
 
-// Un SVG cargado directo como textura saldría a su tamaño nativo (200px) y pixelado,
-// así que lo dibujamos en un canvas grande antes de pasarlo a Three.js
-function loadSvgTexture(url, width) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = Math.round((width * img.height) / img.width);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+// El logo es un PNG hecho a partir de logo.svg: un worker no puede decodificar SVG, y hacerlo
+// en el hilo principal lo bloquea. Pasa por un canvas para que quede orientado como las demás texturas.
+async function loadTexture(url) {
+  const bitmap = await fetch(url)
+    .then((response) => response.blob())
+    .then(createImageBitmap);
+  const canvas = createCanvas(bitmap.width, bitmap.height);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0);
 
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 8;
-      resolve(texture);
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
 }
 
 // Dibujamos la "pantalla" con un canvas 2D y lo usamos como textura
 function createScreenTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 700;
+  const canvas = createCanvas(1024, 700);
   const ctx = canvas.getContext('2d');
 
   const g = ctx.createLinearGradient(0, 0, 1024, 700);

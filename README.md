@@ -52,18 +52,24 @@ Cada vez que guardas un archivo, el navegador se actualiza solo.
 | `index.html` | Los textos y los metadatos SEO. Cada `<section class="panel">` es una "pantalla" del scroll. |
 | `src/style.css` | El diseño: tarjetas de vidrio, aurora, selectores y el canvas fijo de fondo. |
 | `src/laptop.js` | El portátil, construido con código: cajas redondeadas, teclas, retroiluminación, logo y la tapa con su bisagra. |
-| `src/background.js` | El fondo dinámico: la aurora y las partículas. |
+| `src/background.js` | Las partículas de luz alrededor del portátil. |
+| `src/aurora.js` | La aurora del fondo: cambia los colores de las manchas de CSS. |
 | `src/palettes.js` | Las paletas de "Ambiente". La primera es la que se ve al entrar. |
-| `src/main.js` | Escena, cámara, luces, la animación con scroll (GSAP), los selectores y el arrastre. |
-| `public/` | Archivos que se copian tal cual: logo, favicon, íconos, imagen para redes y `sitemap.xml`. |
+| `src/main.js` | Hilo principal: la animación con scroll (GSAP), los selectores y el arrastre. No importa Three.js. |
+| `src/scene.js` | Escena, cámara, luces y loop de render. No toca el DOM, para poder correr en un worker. |
+| `src/scene.worker.js` | El worker donde corre `scene.js`. |
+| `src/sceneClient.js` | Arranca la escena en el worker y, si el navegador no puede, en el hilo principal. |
+| `src/canvas.js` | Crea los canvas 2D de las texturas, tanto en el worker como en el hilo principal. |
+| `public/` | Archivos que se copian tal cual: logo, favicon, íconos, imagen para redes y `sitemap.xml`. `textures/logo.png` (2048×614) se exporta de `logo.svg`: si cambias uno, actualiza el otro. |
 
-## Conceptos clave (en `src/main.js`)
+## Conceptos clave (en `src/scene.js` y `src/main.js`)
 
 1. **Renderer + escena + cámara**: la base de cualquier proyecto Three.js.
 2. **`scene.environment`**: un entorno de luz que se refleja en los metales. Sin esto, el aluminio se ve negro.
 3. **Jerarquía de grupos**: `parallax > model > spin > laptop`. Cada nivel se anima por separado (ratón, scroll, arrastre) sin pisarse con los demás.
 4. **Línea de tiempo con `scrub`**: el progreso del scroll (de 0 a 1) "reproduce" la animación. Cada `.to(..., N)` empieza en la sección N.
 5. **Loop de render**: corre unas 60 veces por segundo. Aquí van la flotación, el parallax del ratón, la inercia del arrastre, las partículas y la cámara.
+6. **Render en un worker**: con `OffscreenCanvas`, crear el contexto WebGL, compilar shaders y dibujar cada frame ocurre fuera del hilo principal. `main.js` solo anima los números del objeto `view` y se los envía a la escena; así el scroll y los clics responden aunque la GPU vaya lenta.
 
 ## Ejercicios (de fácil a difícil)
 
@@ -80,7 +86,7 @@ Cada vez que guardas un archivo, el navegador se actualiza solo.
 
 1. En Blender: `File → Export → glTF 2.0`, formato **glb**.
 2. Guárdalo en `public/models/mi-modelo.glb`.
-3. En `src/main.js`:
+3. En `src/scene.js`:
 
 ```js
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

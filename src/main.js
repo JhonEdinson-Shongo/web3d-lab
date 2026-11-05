@@ -1,76 +1,35 @@
-import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { createLaptop, OPEN_ANGLE } from './laptop.js';
-import { createAurora, createParticles } from './background.js';
+import { createAurora } from './aurora.js';
 import { THEMES } from './palettes.js';
+import { startScene } from './sceneClient.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ---------- 1. Renderer, escena y cámara ----------
-const canvas = document.querySelector('#webgl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
+// ---------- 1. Estado de la escena ----------
+// Three.js corre en un worker (scene.js). Este hilo solo anima estos números con el scroll
+// y el ratón, y se los pasa en cada tick: así el contenido nunca espera a la GPU.
+const view = {
+  model: { x: 0.3, y: -0.7 }, // rotación del portátil
+  stage: { x: 1.1 }, // desplazamiento lateral para dejar espacio al texto de cada sección
+  lid: { open: 0 }, // 0 = cerrada, 1 = abierta
+  screen: { glow: 0 },
+  camPos: { x: 0, y: 2.2, z: 7 }, // la cámara se ubica en camPos y mira a camTarget
+  camTarget: { x: 0, y: 0.7, z: 0 },
+  pointer: { x: 0, y: 0 },
+  drag: { enabled: false, active: false },
+  scrollVelocity: 0,
+};
 
-const scene = new THREE.Scene();
+const viewport = () => ({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio });
 
-// Entorno para los reflejos de los materiales metálicos (PBR)
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const scene = startScene(document.querySelector('#webgl'), {
+  ...viewport(),
+  particleCount: window.matchMedia('(max-width: 700px)').matches ? 180 : 450, // menos partículas en móvil
+  view,
+});
 
-const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-// Animamos estos dos vectores; en cada frame la cámara se ubica en camPos y mira a camTarget
-const camPos = new THREE.Vector3(0, 2.2, 7);
-const camTarget = new THREE.Vector3(0, 0.7, 0);
-let portrait = false; // en pantallas verticales alejamos la cámara y centramos el modelo
-const lookTarget = new THREE.Vector3();
-
-// ---------- 2. Luces, sombra y partículas ----------
-const keyLight = new THREE.DirectionalLight(0xffffff, 2);
-keyLight.position.set(2, 8, 3);
-keyLight.castShadow = true;
-keyLight.shadow.mapSize.set(1024, 1024);
-keyLight.shadow.camera.left = -4;
-keyLight.shadow.camera.right = 4;
-keyLight.shadow.camera.top = 4;
-keyLight.shadow.camera.bottom = -4;
-keyLight.shadow.radius = 10; // a menor resolución + radio, sombra más suave
-scene.add(keyLight);
-
-// Plano invisible que solo muestra la sombra
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.25 }));
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
-
-// Polvo de luz alrededor del portátil (menos partículas en móvil)
-const particles = createParticles(window.matchMedia('(max-width: 700px)').matches ? 180 : 450);
-scene.add(particles.points);
-
-// ---------- 3. Modelo ----------
-const laptop = createLaptop();
-
-// Jerarquía: parallax (ratón + flotación) > model (scroll) > spin (arrastre) > laptop
-const parallax = new THREE.Group();
-const model = new THREE.Group();
-const spin = new THREE.Group(); // giro con el ratón/dedo en la última sección
-spin.add(laptop.group);
-model.add(spin);
-parallax.add(model);
-scene.add(parallax);
-
-model.rotation.set(0.3, -0.7, 0);
-
-// Desplazamiento lateral para dejar espacio al texto de cada sección
-const stage = { x: 1.1 };
-
-// ---------- 4. Animación con scroll ----------
-const screen = { glow: 0 };
-
+// ---------- 2. Animación con scroll ----------
 const tl = gsap.timeline({
   defaults: { ease: 'power2.inOut', duration: 1 },
   scrollTrigger: {
@@ -81,27 +40,24 @@ const tl = gsap.timeline({
   },
 });
 
-// Sección 1 → 2: se endereza, se abre y se enciende la pantalla
-tl.to(model.rotation, { x: 0, y: 0 }, 0)
-  .to(stage, { x: -1.1 }, 0)
-  .to(laptop.lidPivot.rotation, { x: OPEN_ANGLE }, 0)
-  .to(screen, { glow: 1, duration: 0.5, onUpdate: () => {
-        laptop.screenMat.color.setScalar(screen.glow);
-        laptop.setBacklight(screen.glow); // el teclado se ilumina junto con la pantalla
-      } }, 0.5)
+// Sección 1 → 2: se endereza, se abre y se enciende la pantalla (y con ella el teclado)
+tl.to(view.model, { x: 0, y: 0 }, 0)
+  .to(view.stage, { x: -1.1 }, 0)
+  .to(view.lid, { open: 1 }, 0)
+  .to(view.screen, { glow: 1, duration: 0.5 }, 0.5)
   // Sección 2 → 3: la cámara se acerca al teclado desde un lado
-  .to(camPos, { x: 2.6, y: 2.4, z: 3.6 }, 1)
-  .to(camTarget, { x: 0, y: 0.55, z: 0.2 }, 1)
-  .to(stage, { x: 0.4 }, 1)
+  .to(view.camPos, { x: 2.6, y: 2.4, z: 3.6 }, 1)
+  .to(view.camTarget, { x: 0, y: 0.55, z: 0.2 }, 1)
+  .to(view.stage, { x: 0.4 }, 1)
   // Sección 3 → 4: vista de 3/4 para lucir el material
-  .to(camPos, { x: -3.5, y: 2.8, z: 5 }, 2)
-  .to(camTarget, { x: -0.6, y: 0.85, z: 0 }, 2)
-  .to(stage, { x: -1.2 }, 2)
+  .to(view.camPos, { x: -3.5, y: 2.8, z: 5 }, 2)
+  .to(view.camTarget, { x: -0.6, y: 0.85, z: 0 }, 2)
+  .to(view.stage, { x: -1.2 }, 2)
   // Sección 4 → 5: vuelta completa y regreso al frente
-  .to(model.rotation, { y: Math.PI * 2 }, 3)
-  .to(camPos, { x: 0, y: 2.2, z: 7 }, 3)
-  .to(camTarget, { x: 0, y: 0.35, z: 0 }, 3)
-  .to(stage, { x: 0 }, 3);
+  .to(view.model, { y: Math.PI * 2 }, 3)
+  .to(view.camPos, { x: 0, y: 2.2, z: 7 }, 3)
+  .to(view.camTarget, { x: 0, y: 0.35, z: 0 }, 3)
+  .to(view.stage, { x: 0 }, 3);
 
 // Textos: aparecen al entrar en pantalla
 gsap.utils.toArray('.panel:not(.hero)').forEach((panel) => {
@@ -112,7 +68,7 @@ gsap.utils.toArray('.panel:not(.hero)').forEach((panel) => {
   });
 });
 
-// ---------- 5. Aurora: colores por sección ----------
+// ---------- 3. Aurora: colores por sección ----------
 // Las paletas están en palettes.js; la primera es la que se ve al entrar
 const aurora = createAurora(document.querySelector('#aurora'));
 let theme = THEMES[0];
@@ -150,7 +106,7 @@ function applyTheme(i) {
   theme = THEMES[i];
   aurora.setPalette(auroraFor(currentSection));
   aurora.setIntensity(theme.intensity);
-  particles.setAccent(theme.accent);
+  scene.setAccent(theme.accent);
   ambientButtons.forEach((btn, k) => {
     btn.classList.toggle('active', k === i);
     btn.setAttribute('aria-pressed', String(k === i));
@@ -158,28 +114,27 @@ function applyTheme(i) {
 }
 applyTheme(0);
 
-// ---------- 6. Selector de color ----------
+// ---------- 4. Selector de color ----------
 document.querySelectorAll('.swatch').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelector('.swatch.active')?.classList.remove('active');
     btn.classList.add('active');
-    const c = new THREE.Color(btn.dataset.color);
-    gsap.to(laptop.aluminium.color, { r: c.r, g: c.g, b: c.b, duration: 0.8, ease: 'power2.out' });
+    scene.setColor(btn.dataset.color);
     chosenColor = btn.dataset.color;
     if (theme.sections[currentSection] === null) aurora.setPalette(auroraFor(currentSection));
   });
 });
 
-// ---------- 7. Ratón (parallax sutil) ----------
-const pointer = { x: 0, y: 0 };
+// ---------- 5. Ratón (parallax sutil) ----------
 window.addEventListener('pointermove', (e) => {
-  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
+  view.pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  view.pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
 });
 
-// ---------- 8. Arrastrar para girar (última sección) ----------
+// ---------- 6. Arrastrar para girar (última sección) ----------
 const playground = document.querySelector('#playground');
-const drag = { enabled: false, active: false, lastX: 0, velocity: 0 };
+const { drag } = view;
+let lastX = 0;
 const TURN = Math.PI * 2;
 
 // Solo se puede arrastrar cuando la última sección está en pantalla
@@ -195,17 +150,16 @@ ScrollTrigger.create({
 playground.addEventListener('pointerdown', (e) => {
   if (!drag.enabled || e.target.closest('a, button')) return;
   drag.active = true;
-  drag.lastX = e.clientX;
-  drag.velocity = 0;
+  lastX = e.clientX;
+  scene.spinBy(0); // frena la inercia de la vuelta anterior
   playground.setPointerCapture(e.pointerId);
   playground.classList.add('dragging');
 });
 playground.addEventListener('pointermove', (e) => {
   if (!drag.active) return;
   // arrastrar todo el ancho de la pantalla = una vuelta completa
-  drag.velocity = ((e.clientX - drag.lastX) / window.innerWidth) * TURN;
-  drag.lastX = e.clientX;
-  spin.rotation.y += drag.velocity;
+  scene.spinBy(((e.clientX - lastX) / window.innerWidth) * TURN);
+  lastX = e.clientX;
 });
 const endDrag = () => {
   if (!drag.active) return;
@@ -216,56 +170,18 @@ const endDrag = () => {
 playground.addEventListener('pointerup', endDrag);
 playground.addEventListener('pointercancel', endDrag);
 
-// ---------- 9. Resize ----------
-function resize() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h, false);
-  portrait = camera.aspect < 1;
-}
-window.addEventListener('resize', resize);
-resize();
+// ---------- 7. Resize ----------
+window.addEventListener('resize', () => scene.resize(viewport()));
 
-// ---------- 10. Loop de render ----------
-const timer = new THREE.Timer();
-timer.connect(document); // pausa el tiempo cuando la pestaña no está visible
-let scrollBoost = 1; // multiplicador de velocidad de las partículas según la velocidad del scroll
-
-renderer.setAnimationLoop((timestamp) => {
-  timer.update(timestamp);
-  const t = timer.getElapsed();
-  const dt = timer.getDelta();
-
-  // flotación + parallax con interpolación suave (lerp)
-  parallax.position.y = 0.45 + Math.sin(t * 1.2) * 0.04;
-  parallax.rotation.y += (pointer.x * 0.15 - parallax.rotation.y) * 0.05;
-  parallax.rotation.x += (pointer.y * 0.08 - parallax.rotation.x) * 0.05;
-
-  // al soltar sigue girando con inercia; al salir de la sección vuelve a la vuelta completa más cercana
-  if (!drag.active && drag.enabled) {
-    spin.rotation.y += drag.velocity;
-    drag.velocity *= 0.95;
-  } else if (!drag.enabled) {
-    const home = Math.round(spin.rotation.y / TURN) * TURN;
-    spin.rotation.y += (home - spin.rotation.y) * 0.08;
-    drag.velocity = 0;
-  }
-
-  // partículas: aceleran con el scroll rápido y se desplazan algo más que el portátil con el ratón (profundidad)
-  const targetBoost = 1 + Math.min(Math.abs(tl.scrollTrigger.getVelocity()) / 300, 8);
-  scrollBoost += (targetBoost - scrollBoost) * 0.08;
-  particles.update(dt, t, scrollBoost);
-  particles.points.position.x += (pointer.x * 0.4 - particles.points.position.x) * 0.03;
-
-  model.position.x = portrait ? 0 : stage.x;
-  camera.position.copy(camPos).multiplyScalar(portrait ? 1.8 : 1);
-  lookTarget.copy(camTarget);
-  if (portrait) lookTarget.y -= 0.9; // sube el modelo; el texto va abajo
-  camera.lookAt(lookTarget);
-  camera.updateMatrixWorld();
-  laptop.orientLogo(camera);
-
-  renderer.render(scene, camera);
+// ---------- 8. Sincronizar con la escena ----------
+// Solo se envía lo que cambió: con la página quieta este hilo no hace nada.
+// GSAP guarda en cada objeto animado una referencia `_gsap` que no se puede enviar a un worker.
+const withoutGsap = (key, value) => (key === '_gsap' ? undefined : value);
+let sentView = '';
+gsap.ticker.add(() => {
+  view.scrollVelocity = tl.scrollTrigger.getVelocity();
+  const next = JSON.stringify(view, withoutGsap);
+  if (next === sentView) return;
+  sentView = next;
+  scene.update(JSON.parse(next));
 });

@@ -1,21 +1,7 @@
 import * as THREE from 'three';
+import { createCanvas } from './canvas.js';
 
-// Fondo dinámico: aurora (CSS, detrás del canvas) + partículas de luz (Three.js, dentro de la escena)
-
-// ---------- Aurora ----------
-// Tres manchas de color muy desenfocadas (ver #aurora en style.css).
-// CSS se encarga del movimiento y de la transición entre colores; aquí solo cambiamos los colores.
-export function createAurora(el) {
-  const blobs = [...el.children];
-  return {
-    setPalette(colors) {
-      blobs.forEach((blob, i) => (blob.style.backgroundColor = colors[i % colors.length]));
-    },
-    setIntensity(opacity) {
-      el.style.setProperty('--aurora-opacity', opacity);
-    },
-  };
-}
+// Fondo dinámico, parte 3D: partículas de luz dentro de la escena (la aurora está en aurora.js)
 
 // ---------- Partículas ----------
 // Polvo de luz alrededor del portátil. Suben despacio con un leve vaivén
@@ -81,8 +67,7 @@ export function createParticles(count) {
 // Punto redondo y difuso (sin textura, PointsMaterial dibuja cuadrados)
 function createDotTexture() {
   const size = 64;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
+  const canvas = createCanvas(size, size);
   const ctx = canvas.getContext('2d');
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   g.addColorStop(0, 'rgba(255, 255, 255, 1)');
